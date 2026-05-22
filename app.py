@@ -646,6 +646,245 @@ All approvals are granted by PSD / line management chain
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# WORKFLOW 4 — VETTING REVIEW REFERRAL
+# ══════════════════════════════════════════════════════════════════════════════
+def vetting_workflow():
+    step = st.session_state.workflow_step
+    d = st.session_state.workflow_data
+    TOTAL = 6
+
+    st.markdown('<div class="workflow-panel">', unsafe_allow_html=True)
+    st.markdown("### 🔍 Vetting Review — Referral Workflow")
+    st.markdown(f'<span class="step-indicator">Step {min(step,TOTAL-1)} of {TOTAL-1}</span>', unsafe_allow_html=True)
+    st.progress(min(step / (TOTAL - 1), 1.0))
+
+    if step == 1:
+        name, rank, collar, department, supervisor = officer_details_step("vr1")
+        VETTING_LEVELS = [
+            "Non-Police Personnel Vetting (NPPV) Level 1",
+            "Non-Police Personnel Vetting (NPPV) Level 2",
+            "Non-Police Personnel Vetting (NPPV) Level 3",
+            "Management Vetting (MV)",
+            "Developed Vetting (DV)",
+            "Recruitment Vetting (RV)",
+            "No current vetting / unknown",
+        ]
+        st.markdown("---")
+        current_vetting = st.selectbox(
+            "Current vetting level held",
+            VETTING_LEVELS,
+            index=VETTING_LEVELS.index(d.get("current_vetting", "Recruitment Vetting (RV)")),
+        )
+        def valid(): return bool(name and collar and supervisor)
+        def save(): d.update({"officer_name": name, "rank": rank, "collar": collar,
+                               "department": department, "supervisor": supervisor,
+                               "current_vetting": current_vetting})
+        nav_buttons(step, "vr", TOTAL, valid, save)
+
+    elif step == 2:
+        st.markdown("**Trigger for Review**")
+        st.caption("Select the primary reason a vetting review is required.")
+        TRIGGERS = [
+            "New criminal conviction or caution",
+            "Arrest or charge (outcome pending)",
+            "Subject of a counter-corruption investigation or intelligence",
+            "Notifiable association declared",
+            "Financial concern (CCJ, insolvency, significant debt)",
+            "Disclosure of domestic abuse allegation (as perpetrator)",
+            "Drugs / alcohol misuse concern",
+            "Inappropriate use of force systems or data",
+            "Change in personal circumstances (relationship, travel, etc.)",
+            "Supervisor-initiated — behaviour or conduct concern",
+            "Scheduled periodic review",
+            "Other",
+        ]
+        trigger = st.selectbox(
+            "Reason for referral",
+            TRIGGERS,
+            index=TRIGGERS.index(d.get("trigger", TRIGGERS[0])),
+        )
+        trigger_detail = st.text_area(
+            "Brief description of the trigger",
+            value=d.get("trigger_detail", ""),
+            placeholder="Summarise the circumstances without including sensitive intelligence",
+        )
+        how_identified = st.selectbox(
+            "How was this information identified?",
+            ["Officer self-declared",
+             "Identified by supervisor",
+             "Intelligence received by CCU/PSD",
+             "PNC / systems check",
+             "Third-party information",
+             "Other"],
+            index=["Officer self-declared", "Identified by supervisor",
+                   "Intelligence received by CCU/PSD", "PNC / systems check",
+                   "Third-party information", "Other"]
+            .index(d.get("how_identified", "Officer self-declared")),
+        )
+        def valid(): return bool(trigger_detail)
+        def save(): d.update({"trigger": trigger, "trigger_detail": trigger_detail,
+                               "how_identified": how_identified})
+        nav_buttons(step, "vr", TOTAL, valid, save)
+
+    elif step == 3:
+        st.markdown("**Nature of the Concern**")
+        CONCERNS = [
+            "Criminal behaviour or associations",
+            "Integrity / honesty",
+            "Loyalty to the force / crown",
+            "Financial probity",
+            "Vulnerability to exploitation or coercion",
+            "Use of force systems, data, or intelligence",
+            "Personal conduct or lifestyle",
+            "Extremism or radicalisation",
+        ]
+        concern_types = st.multiselect(
+            "Which vetting criteria does this concern relate to?",
+            options=CONCERNS,
+            default=d.get("concern_types", []),
+        )
+        officer_aware = st.radio(
+            "Is the officer aware that a referral is being made?",
+            ["Yes", "No", "Not yet — pending CCU/PSD guidance"],
+            index=["Yes", "No", "Not yet — pending CCU/PSD guidance"]
+            .index(d.get("officer_aware", "Yes")),
+        )
+        connected_matters = st.text_area(
+            "Any connected misconduct, PSD, or HR matters? (leave blank if none)",
+            value=d.get("connected_matters", ""),
+            placeholder="Optional — e.g. pending misconduct investigation ref: PSI/2025/001",
+        )
+        def valid(): return bool(concern_types)
+        def save(): d.update({"concern_types": concern_types, "officer_aware": officer_aware,
+                               "connected_matters": connected_matters})
+        nav_buttons(step, "vr", TOTAL, valid, save)
+
+    elif step == 4:
+        st.markdown("**Risk and Urgency**")
+        URGENCY = [
+            "Routine — no immediate deployment risk",
+            "Moderate — supervisor recommends deployment restrictions pending review",
+            "Urgent — immediate risk to operations, intelligence, or public safety",
+        ]
+        urgency = st.radio(
+            "How urgent is this referral?",
+            URGENCY,
+            index=URGENCY.index(d.get("urgency", URGENCY[0])),
+        )
+        DEPLOYMENTS = [
+            "No restrictions recommended",
+            "Recommend removal from sensitive systems access pending review",
+            "Recommend removal from current deployment / unit pending review",
+            "Recommend full suspension of duties — CCU authorisation required",
+        ]
+        deployment_rec = st.selectbox(
+            "Deployment recommendation",
+            DEPLOYMENTS,
+            index=DEPLOYMENTS.index(d.get("deployment_rec", DEPLOYMENTS[0])),
+        )
+        intel_risk = st.radio(
+            "Is there any risk to live operations or sensitive intelligence?",
+            ["No", "Yes — details below", "Unknown at this stage"],
+            index=["No", "Yes — details below", "Unknown at this stage"]
+            .index(d.get("intel_risk", "Unknown at this stage")),
+        )
+        intel_detail = ""
+        if intel_risk == "Yes — details below":
+            intel_detail = st.text_area("Briefly describe the risk", value=d.get("intel_detail", ""))
+        def valid(): return True
+        def save(): d.update({"urgency": urgency, "deployment_rec": deployment_rec,
+                               "intel_risk": intel_risk, "intel_detail": intel_detail})
+        nav_buttons(step, "vr", TOTAL, valid, save)
+
+    elif step == 5:
+        st.markdown("**Review before generating referral**")
+        st.markdown(f"""
+| Field | Detail |
+|---|---|
+| **Officer** | {d.get('officer_name')} ({d.get('rank')}) |
+| **Collar / Pay No** | {d.get('collar')} |
+| **Department** | {d.get('department','—')} |
+| **Supervisor** | {d.get('supervisor')} |
+| **Current vetting** | {d.get('current_vetting')} |
+| **Trigger** | {d.get('trigger')} |
+| **Identified by** | {d.get('how_identified')} |
+| **Officer aware** | {d.get('officer_aware')} |
+| **Urgency** | {d.get('urgency')} |
+| **Deployment rec.** | {d.get('deployment_rec')} |
+| **Intel risk** | {d.get('intel_risk')} |
+        """)
+        if d.get("concern_types"):
+            st.markdown("**Vetting criteria concerned:**")
+            for c in d.get("concern_types", []): st.markdown(f"- {c}")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("← Back", key="vr_rev_back"):
+                st.session_state.workflow_step = 4; st.rerun()
+        with col2:
+            if st.button("✅ Generate Referral", type="primary", key="vr_gen"):
+                st.session_state.workflow_step = 6; st.rerun()
+
+    elif step == 6:
+        d = st.session_state.workflow_data
+        concern_text = "\n".join(f"  • {c}" for c in d.get("concern_types", []))
+
+        urgent = "Urgent" in d.get("urgency", "")
+        status = "URGENT — REFER TO VETTING UNIT IMMEDIATELY" if urgent else "REFER TO VETTING UNIT — ROUTINE REVIEW"
+
+        record = f"""VETTING REVIEW — REFERRAL RECORD
+{'═'*52}
+Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+Status:    {status}
+
+SUBJECT OFFICER / STAFF MEMBER
+  Name:            {d.get('officer_name')}
+  Rank / Grade:    {d.get('rank')}
+  Collar / Pay No: {d.get('collar')}
+  Department:      {d.get('department','Not specified')}
+  Current vetting: {d.get('current_vetting')}
+
+COMPLETING SUPERVISOR
+  Name:            {d.get('supervisor')}
+
+TRIGGER FOR REVIEW
+  Reason:          {d.get('trigger')}
+  How identified:  {d.get('how_identified')}
+  Details:         {d.get('trigger_detail')}
+
+VETTING CRITERIA CONCERNED
+{concern_text or '  • Not specified'}
+
+CONNECTED MATTERS
+  {d.get('connected_matters','None') or 'None'}
+
+DISCLOSURE
+  Officer aware of referral: {d.get('officer_aware')}
+
+RISK ASSESSMENT
+  Urgency:             {d.get('urgency')}
+  Deployment rec.:     {d.get('deployment_rec')}
+  Intel / ops risk:    {d.get('intel_risk')}
+{('  Detail: ' + d.get('intel_detail','')) if d.get('intel_detail') else ''}
+NEXT STEPS
+  1. Forward this referral to the Vetting Unit / CCU without delay
+  2. Do not share this referral with the subject officer
+  3. Implement deployment recommendations only after CCU authorisation
+  4. Await vetting review outcome before taking further action
+  5. Retain a copy of this referral securely
+
+{'═'*52}
+DRAFT REFERRAL — FOR VETTING UNIT USE ONLY
+All vetting decisions are made solely by the Vetting Unit
+{'═'*52}"""
+        render_record(record, d.get('collar', 'unknown'), "VR")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    if step < 6:
+        if st.button("✕ Cancel", key="vr_cancel"):
+            reset_workflow(); st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # WORKFLOW BUTTON RENDERER
 # ══════════════════════════════════════════════════════════════════════════════
 def render_workflow_buttons(workflows, key_prefix):
@@ -665,6 +904,12 @@ def render_workflow_buttons(workflows, key_prefix):
         elif wf["url"] == "#workflow-business":
             if st.button(f"💼 {wf['label']}", key=f"wf_bi_{key_prefix}"):
                 st.session_state.workflow = "business"
+                st.session_state.workflow_step = 1
+                st.session_state.workflow_data = {}
+                st.rerun()
+        elif wf["url"] == "#workflow-vetting":
+            if st.button(f"🔍 {wf['label']}", key=f"wf_vr_{key_prefix}"):
+                st.session_state.workflow = "vetting"
                 st.session_state.workflow_step = 1
                 st.session_state.workflow_data = {}
                 st.rerun()
@@ -713,6 +958,8 @@ elif st.session_state.workflow == "gifts":
     gifts_workflow()
 elif st.session_state.workflow == "business":
     business_workflow()
+elif st.session_state.workflow == "vetting":
+    vetting_workflow()
 
 # Chat input
 if not st.session_state.workflow:
@@ -764,6 +1011,7 @@ with st.sidebar:
     st.markdown("✅ NIA Recording")
     st.markdown("✅ Gifts & Hospitality Declaration")
     st.markdown("✅ Business Interests Declaration")
+    st.markdown("✅ Vetting Review Referral")
     st.divider()
     if st.button("🗑️ Clear conversation", use_container_width=True):
         for k, v in defaults.items():
