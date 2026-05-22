@@ -97,7 +97,7 @@ def nia_workflow():
     st.markdown('<div class="workflow-panel">', unsafe_allow_html=True)
     st.markdown("### 📋 Notifiable Association — Recording Workflow")
     st.markdown(f'<span class="step-indicator">Step {step} of 5</span>', unsafe_allow_html=True)
-    st.progress(step / 5)
+    st.progress(min(step / 5, 1.0))
 
     # ── Step 1: Officer details ────────────────────────────────────────────────
     if step == 1:
